@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de Implantação — Contattus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+/* ------------------------------------------------------------------
+   PAINEL DE IMPLANTAÇÃO — CONTATTUS
+   Arquivo único. Basta subir este .html no servidor.
+   Sincronização opcional entre a equipe: ver CONFIG no início do script.
+------------------------------------------------------------------- */
+:root{
+  --ink:#0E1B2A;
+  --ink-2:#1B2E44;
+  --paper:#E8EBEF;
+  --surface:#FFFFFF;
+  --line:#D2D9E0;
+  --line-forte:#B6C1CC;
+  --texto:#15212D;
+  --suave:#5C6B79;
+  --verde:#0F6B4F;
+  --verde-claro:#E4F0EA;
+  --ambar:#A96400;
+  --ambar-claro:#FBEEDC;
+  --vermelho:#A32020;
+  --vermelho-claro:#F8E5E3;
+  --azul:#28568F;
+  --azul-claro:#E4EBF4;
+  --cinza:#6B7885;
+  --cinza-claro:#EAEDF0;
+  --raio:3px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--texto);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:14px;
+  line-height:1.45;
+  font-feature-settings:"tnum" 1,"lnum" 1;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:"Newsreader",Georgia,serif;font-weight:500;margin:0;letter-spacing:-.01em}
+button,select,input,textarea{font:inherit;color:inherit}
+a{color:var(--azul)}
+
+/* -------- topo -------- */
+.topo{
+  background:var(--ink);
+  color:#EDF1F5;
+  border-bottom:3px solid var(--verde);
+  position:sticky;top:0;z-index:40;
+}
+.topo-linha{
+  max-width:1400px;margin:0 auto;padding:12px 20px;
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+}
+.marca{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.marca strong{font-family:"Newsreader",Georgia,serif;font-size:22px;font-weight:600;letter-spacing:.01em}
+.marca span{color:#93A6B8;font-size:12.5px}
+.abas{display:flex;gap:2px;background:rgba(255,255,255,.07);padding:3px;border-radius:var(--raio)}
+.abas button{
+  background:none;border:0;color:#B9C7D4;padding:6px 14px;border-radius:2px;cursor:pointer;
+}
+.abas button[aria-selected="true"]{background:#EDF1F5;color:var(--ink);font-weight:600}
+.abas button:hover:not([aria-selected="true"]){color:#fff}
+.acoes{display:flex;gap:6px;flex-wrap:wrap}
+.btn{
+  background:transparent;border:1px solid rgba(255,255,255,.28);color:#DDE5EC;
+  padding:6px 12px;border-radius:var(--raio);cursor:pointer;
+}
+.btn:hover{background:rgba(255,255,255,.12)}
+.btn-primario{background:var(--verde);border-color:var(--verde);color:#fff;font-weight:500}
+.btn-primario:hover{background:#0C5A42}
+:focus-visible{outline:2px solid #4C9BE8;outline-offset:2px}
+
+/* -------- indicadores -------- */
+.indicadores{
+  background:var(--ink-2);color:#DCE5EE;
+}
+.indicadores-in{
+  max-width:1400px;margin:0 auto;padding:0 20px;
+  display:flex;flex-wrap:wrap;
+}
+.ind{padding:14px 24px 16px 0;margin-right:24px;border-right:1px solid rgba(255,255,255,.14)}
+.ind:last-child{border-right:0}
+.ind b{display:block;font-size:24px;font-weight:500;font-family:"Newsreader",Georgia,serif;line-height:1.1}
+.ind small{color:#93A6B8;font-size:11.5px}
+.ind .barra{width:150px;height:6px;background:rgba(255,255,255,.16);margin-top:7px}
+.ind .barra i{display:block;height:6px;background:var(--verde);}
+
+/* -------- filtros -------- */
+.filtros{
+  background:var(--surface);border-bottom:1px solid var(--line);
+  position:sticky;top:57px;z-index:30;
+}
+.filtros-in{max-width:1400px;margin:0 auto;padding:10px 20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.filtros label{font-size:12px;color:var(--suave);display:flex;flex-direction:column;gap:3px}
+.filtros select,.filtros input{
+  border:1px solid var(--line-forte);background:#fff;padding:5px 8px;border-radius:var(--raio);min-width:150px;
+}
+.filtros input[type="search"]{min-width:230px}
+.limpar{margin-left:auto;background:none;border:0;color:var(--azul);cursor:pointer;text-decoration:underline;padding:0}
+
+/* -------- conteúdo -------- */
+main{max-width:1400px;margin:0 auto;padding:22px 20px 60px}
+.setor{margin-bottom:34px}
+.setor-cab{display:flex;align-items:baseline;gap:12px;padding-bottom:6px;border-bottom:2px solid var(--ink);margin-bottom:14px}
+.setor-cab h2{font-size:20px}
+.setor-cab em{font-style:normal;color:var(--suave);font-size:12.5px}
+
+.projeto{background:var(--surface);border:1px solid var(--line);margin-bottom:12px}
+.projeto-cab{display:flex;gap:14px;align-items:flex-start;padding:12px 14px;cursor:pointer;width:100%;text-align:left;background:none;border:0}
+.projeto-cab:hover{background:#F6F8FA}
+.codigo{
+  font-weight:600;font-size:12px;letter-spacing:.04em;background:var(--ink);color:#fff;
+  padding:3px 7px;border-radius:2px;flex:none;margin-top:1px;
+}
+.projeto-titulo{flex:1;min-width:0}
+.projeto-titulo h3{font-size:17px;line-height:1.25}
+.projeto-meta{color:var(--suave);font-size:12.5px;margin-top:2px}
+.progresso{flex:none;width:170px;text-align:right}
+.progresso .n{font-size:12.5px;color:var(--suave)}
+.progresso .barra{height:5px;background:var(--cinza-claro);margin-top:5px}
+.progresso .barra i{display:block;height:5px;background:var(--verde)}
+.seta{flex:none;color:var(--suave);font-size:11px;margin-top:4px;transition:transform .15s ease}
+.projeto[open-state="1"] .seta{transform:rotate(90deg)}
+
+.corpo{border-top:1px solid var(--line);padding:0}
+.pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11.5px;border:1px solid;white-space:nowrap}
+.p-alta{color:var(--vermelho);border-color:#E2B4B0;background:var(--vermelho-claro)}
+.p-media-alta{color:var(--ambar);border-color:#E6CFA8;background:var(--ambar-claro)}
+.p-media{color:var(--azul);border-color:#BDCDE2;background:var(--azul-claro)}
+.p-definir{color:var(--cinza);border-color:var(--line-forte);background:var(--cinza-claro)}
+
+/* tabela de etapas */
+table{width:100%;border-collapse:collapse}
+thead th{
+  font-size:11.5px;font-weight:600;color:var(--suave);text-align:left;
+  padding:8px 10px;border-bottom:1px solid var(--line);background:#FAFBFC;
+}
+tbody td{padding:8px 10px;border-bottom:1px solid #EDF0F3;vertical-align:top}
+tbody tr:hover{background:#F8FAFB}
+td.ordem{color:var(--suave);width:34px;text-align:right;font-variant-numeric:tabular-nums}
+td.atividade{font-weight:500}
+td.obs{color:var(--suave);font-size:12.5px}
+.prazo-vencido{color:var(--vermelho);font-weight:600}
+.sel-status{border:1px solid var(--line-forte);border-radius:10px;padding:2px 6px;font-size:12px;background:#fff;cursor:pointer;max-width:145px}
+.s-iniciar{background:var(--azul-claro);border-color:#BDCDE2;color:var(--azul)}
+.s-andamento{background:var(--ambar-claro);border-color:#E6CFA8;color:var(--ambar)}
+.s-bloqueado{background:var(--vermelho-claro);border-color:#E2B4B0;color:var(--vermelho)}
+.s-concluido{background:var(--verde-claro);border-color:#B7D6C8;color:var(--verde)}
+.s-futuro{background:var(--cinza-claro);border-color:var(--line-forte);color:var(--cinza)}
+.acoes-linha{white-space:nowrap;text-align:right;width:90px}
+.mini{background:none;border:1px solid var(--line);border-radius:var(--raio);padding:2px 7px;font-size:12px;color:var(--suave);cursor:pointer}
+.mini:hover{border-color:var(--ink);color:var(--ink)}
+.mini-perigo:hover{border-color:var(--vermelho);color:var(--vermelho)}
+
+.rodape-projeto{padding:12px 14px;background:#FAFBFC;border-top:1px solid var(--line);display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.checklist{flex:1;min-width:280px}
+.checklist p{margin:0 0 6px;font-size:12px;color:var(--suave)}
+.checklist div{display:flex;flex-wrap:wrap;gap:5px}
+.chk{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line-forte);background:#fff;border-radius:12px;padding:2px 9px;font-size:12px;cursor:pointer}
+.chk input{margin:0;accent-color:var(--verde)}
+.chk.ok{background:var(--verde-claro);border-color:#B7D6C8;color:var(--verde)}
+.objetivo{flex:2;min-width:300px;font-size:12.5px;color:var(--suave);max-width:70ch}
+
+/* quadro */
+.quadro{display:grid;grid-template-columns:repeat(5,minmax(210px,1fr));gap:12px;align-items:start}
+.coluna{background:#DFE4E9;border:1px solid var(--line);min-height:140px}
+.coluna h3{font-size:14px;font-family:"IBM Plex Sans",sans-serif;font-weight:600;padding:9px 11px;display:flex;justify-content:space-between;border-bottom:1px solid var(--line)}
+.coluna h3 span{color:var(--suave);font-weight:400}
+.coluna.sobre{outline:2px dashed var(--verde);outline-offset:-3px}
+.coluna ul{list-style:none;margin:0;padding:8px;display:flex;flex-direction:column;gap:7px}
+.cartao{background:#fff;border:1px solid var(--line);border-left:3px solid var(--cinza);padding:8px 10px;cursor:grab}
+.cartao:active{cursor:grabbing}
+.cartao b{display:block;font-size:11px;color:var(--suave);font-weight:600;letter-spacing:.03em;margin-bottom:3px}
+.cartao p{margin:0;font-size:13px;line-height:1.35}
+.cartao small{color:var(--suave);font-size:11.5px;display:block;margin-top:5px}
+.cl-alta{border-left-color:var(--vermelho)}
+.cl-media-alta{border-left-color:var(--ambar)}
+.cl-media{border-left-color:var(--azul)}
+.cl-definir{border-left-color:var(--cinza)}
+
+/* pessoas */
+.pessoa{background:var(--surface);border:1px solid var(--line);margin-bottom:14px}
+.pessoa-cab{display:flex;gap:14px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);background:#FAFBFC}
+.pessoa-cab h3{font-size:18px}
+.pessoa-cab .n{color:var(--suave);font-size:12.5px;margin-left:auto}
+
+.vazio{background:var(--surface);border:1px dashed var(--line-forte);padding:38px;text-align:center;color:var(--suave)}
+.vazio strong{display:block;color:var(--texto);font-family:"Newsreader",serif;font-size:19px;font-weight:500;margin-bottom:6px}
+
+footer{max-width:1400px;margin:0 auto;padding:0 20px 40px;color:var(--suave);font-size:12.5px}
+footer details{border-top:1px solid var(--line-forte);padding-top:10px}
+footer summary{cursor:pointer;color:var(--azul)}
+footer ol{max-width:70ch}
+
+/* diálogo */
+dialog{border:1px solid var(--line-forte);border-radius:var(--raio);padding:0;width:min(620px,94vw);box-shadow:0 18px 50px rgba(14,27,42,.28)}
+dialog::backdrop{background:rgba(14,27,42,.55)}
+.dlg-cab{padding:14px 18px;border-bottom:1px solid var(--line);background:var(--ink);color:#fff}
+.dlg-cab h3{font-size:19px}
+.dlg-corpo{padding:16px 18px;display:grid;gap:12px;max-height:66vh;overflow:auto}
+.dlg-corpo label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--suave)}
+.dlg-corpo input,.dlg-corpo select,.dlg-corpo textarea{
+  border:1px solid var(--line-forte);border-radius:var(--raio);padding:7px 9px;background:#fff;width:100%;
+}
+.dlg-corpo textarea{min-height:64px;resize:vertical}
+.dupla{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dlg-rodape{padding:12px 18px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;background:#FAFBFC}
+.dlg-rodape .btn{border-color:var(--line-forte);color:var(--texto)}
+.dlg-rodape .btn:hover{background:var(--cinza-claro)}
+
+.aviso{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--ink);color:#fff;padding:10px 18px;border-radius:var(--raio);z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.aviso[hidden]{display:none}
+
+@media (max-width:900px){
+  .quadro{grid-template-columns:1fr}
+  .progresso{width:120px}
+  .ind{padding-right:16px;margin-right:16px}
+  .corpo{overflow-x:auto}
+  table{min-width:760px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media print{
+  .topo,.filtros,.acoes-linha,.abas,.acoes,.limpar,footer details{display:none!important}
+  body{background:#fff}
+  .projeto,.pessoa{break-inside:avoid;border-color:#999}
+  .indicadores{background:#fff;color:#000;border-bottom:1px solid #000}
+  .ind small{color:#444}
+}
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="topo-linha">
+    <div class="marca"><strong>Contattus</strong><span>Painel de implantação — automações, RPAs, painéis e IA</span></div>
+    <div class="abas" role="tablist">
+      <button role="tab" data-vista="projetos" aria-selected="true">Projetos</button>
+      <button role="tab" data-vista="quadro" aria-selected="false">Quadro</button>
+      <button role="tab" data-vista="pessoas" aria-selected="false">Pessoas</button>
+    </div>
+    <div class="acoes">
+      <button class="btn btn-primario" id="novoProjeto">Novo projeto</button>
+      <button class="btn" id="exportar">Exportar</button>
+      <button class="btn" id="importar">Importar</button>
+      <button class="btn" id="imprimir">Imprimir</button>
+      <button class="btn" id="restaurar" title="Volta aos dados da reunião de 09/09/2026">Restaurar</button>
+    </div>
+  </div>
+</header>
+
+<section class="indicadores">
+  <div class="indicadores-in" id="indicadores"></div>
+</section>
+
+<section class="filtros">
+  <div class="filtros-in">
+    <label>Setor<select id="fSetor"></select></label>
+    <label>Responsável<select id="fResponsavel"></select></label>
+    <label>Status da etapa<select id="fStatus"></select></label>
+    <label>Onda<select id="fOnda"></select></label>
+    <label>Buscar<input type="search" id="fBusca" placeholder="atividade, projeto, observação"></label>
+    <button class="limpar" id="limparFiltros">Limpar filtros</button>
+  </div>
+</section>
+
+<main id="conteudo"></main>
+
+<footer>
+  <p id="rodapeInfo"></p>
+  <details>
+    <summary>Como uma automação é considerada concluída</summary>
+    <ol>
+      <li>Desenvolvimento</li>
+      <li>Teste técnico</li>
+      <li>Validação pelo setor</li>
+      <li>Empresa piloto</li>
+      <li>Correções</li>
+      <li>Documentação do processo</li>
+      <li>Treinamento da equipe</li>
+      <li>Implantação oficial</li>
+      <li>Acompanhamento</li>
+    </ol>
+    <p>Cada projeto tem essa trilha marcável no rodapé do seu bloco. Só marque “Implantação oficial” quando a rotina estiver realmente sendo usada pelo setor.</p>
+  </details>
+</footer>
+
+<dialog id="dlg">
+  <form method="dialog" id="frm">
+    <div class="dlg-cab"><h3 id="dlgTitulo">Editar</h3></div>
+    <div class="dlg-corpo" id="dlgCorpo"></div>
+    <div class="dlg-rodape">
+      <button class="btn" value="cancelar" type="submit">Cancelar</button>
+      <button class="btn btn-primario" value="salvar" type="submit" id="btnSalvar">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
+<input type="file" id="arquivo" accept="application/json,.json" hidden>
+<div class="aviso" id="aviso" hidden></div>
+
+<script>
+/* ==================================================================
+   CONFIG — sincronização opcional entre a equipe
+   ------------------------------------------------------------------
+   Sem apiUrl, cada pessoa guarda os dados no próprio navegador
+   (localStorage) e a troca é feita por Exportar / Importar.
+
+   Para todos verem os mesmos dados, publique no servidor um endpoint
+   que responda:
+     GET  {apiUrl}  -> devolve o JSON salvo
+     PUT  {apiUrl}  -> recebe o JSON e grava (corpo = application/json)
+   e preencha a URL abaixo. Ex.: apiUrl: '/api/painel'
+================================================================== */
+const CONFIG = { apiUrl: '' };
+
+const STATUS = ['A iniciar','Em andamento','Bloqueado','Concluído','Futuro'];
+const CLASSE_STATUS = {'A iniciar':'s-iniciar','Em andamento':'s-andamento','Bloqueado':'s-bloqueado','Concluído':'s-concluido','Futuro':'s-futuro'};
+const PRIORIDADES = ['Alta','Média/Alta','Média','A definir'];
+const CLASSE_PRIO = {'Alta':'alta','Média/Alta':'media-alta','Média':'media','A definir':'definir'};
+const SETORES = ['Fiscal','Pessoal / DP','Contábil','Administrativo','TI / Automação'];
+const TRILHA = ['Desenvolvimento','Teste técnico','Validação pelo setor','Empresa piloto','Correções','Documentação','Treinamento','Implantação oficial','Acompanhamento'];
+const CHAVE = 'contattus_painel_v1';
+
+/* ---------- dados iniciais: reunião de 09/09/2026 ---------- */
+function dadosIniciais(){
+  const e = (atividade,responsavel,dependencia,status,prazo,obs) =>
+    ({id:novoId(),atividade,responsavel:responsavel||'',dependencia:dependencia||'',status:status||'A iniciar',prazo:prazo||'',obs:obs||''});
+  return {
+    versao:1,
+    atualizado:new Date().toISOString(),
+    projetos:[
+      {id:novoId(),codigo:'T02',nome:'Definição da arquitetura de IA',setor:'TI / Automação',prioridade:'Alta',responsavel:'Cristiano + Todos',onda:1,
+       objetivo:'Marco inicial do plano: o curso de Claude em 10/09/2026 define agentes, skills, a divisão entre RPA, Claude e ChatGPT e o cronograma definitivo.',
+       conclusao:{},
+       etapas:[
+        e('Curso sobre Claude','Todos','','A iniciar','2026-09-10'),
+        e('Definir quais agentes serão criados','Todos','Curso Claude'),
+        e('Definir quais skills serão criadas','Todos','Curso Claude'),
+        e('Avaliar RPA x Claude x ChatGPT por tipo de demanda','Cristiano','Curso Claude'),
+        e('Identificar quais processos devem ser automatizados','Todos','Curso Claude'),
+        e('Definir a estratégia tecnológica','Cristiano/Gestão','Definições anteriores'),
+        e('Elaborar o cronograma definitivo de 90 dias','Gestão','Definições anteriores')
+       ]},
+      {id:novoId(),codigo:'F01',nome:'RPA de Auditoria Fiscal',setor:'Fiscal',prioridade:'Alta',responsavel:'Felipe / Cristiano',onda:2,
+       objetivo:'Transformar a auditoria fiscal em processo padronizado e automatizado, inicialmente pós-apuração, avaliando depois a auditoria pré-apuração.',
+       conclusao:{},
+       etapas:[
+        e('Separar empresa para teste','Felipe','—'),
+        e('Cadastrar rotina automática no Domínio','Felipe','Empresa teste'),
+        e('Automatizar importação de notas de saída e serviços do SIEG para o Domínio','Felipe/Cristiano','Rotina Domínio'),
+        e('Definir processo de importação dos SPEDs dos clientes','Cristiano','—'),
+        e('Definir processo de entrada via XML para clientes que não enviam SPED','Cristiano','—'),
+        e('Definir data pós-apuração para geração do RPA','Fiscal/Gestão','Processo de apuração'),
+        e('Gerar RPA e baixar planilhão','Cristiano','Etapas anteriores'),
+        e('Executar auditoria automatizada','Cristiano','RPA'),
+        e('Validar resultado da auditoria','Fiscal','RPA funcionando'),
+        e('Reavaliar possibilidade de auditoria pré-apuração','Gestão/Fiscal/TI','Auditoria pós-apuração','Futuro')
+       ]},
+      {id:novoId(),codigo:'F02',nome:'RPA de processos secundários',setor:'Fiscal',prioridade:'Alta',responsavel:'Cristiano',onda:2,
+       objetivo:'Automatizar demandas braçais e repetitivas na SEFAZ-PB: busca e correção de faturas, parcelamentos estaduais, busca e armazenamento de XMLs.',
+       conclusao:{},
+       etapas:[
+        e('Mapear cada processo','Cristiano'),
+        e('Definir fluxo da busca/correção de faturas','Cristiano'),
+        e('Definir fluxo de busca/armazenamento de parcelamentos','Cristiano'),
+        e('Definir fluxo de busca/armazenamento de XMLs','Cristiano'),
+        e('Avaliar RPA x Claude x ChatGPT','Cristiano','Curso Claude'),
+        e('Desenvolver automações','Cristiano','Fluxos definidos'),
+        e('Testar','Cristiano/Fiscal','Automações prontas'),
+        e('Implantar','Fiscal/TI','Testes aprovados','Futuro')
+       ]},
+      {id:novoId(),codigo:'F03',nome:'Painel de acompanhamento do Fiscal',setor:'Fiscal',prioridade:'Média/Alta',responsavel:'Flávio',onda:3,
+       objetivo:'Ajustar e colocar em uso o painel do Fiscal e integrá-lo ao Nibo e às demais ferramentas.',
+       conclusao:{},
+       etapas:[
+        e('Ajustar painel atual','Flávio'),
+        e('Subir painel para utilização','Flávio','Painel ajustado'),
+        e('Validar utilização pela equipe Fiscal','Fiscal','Painel no ar','Futuro'),
+        e('Integrar com o Nibo','Flávio','Painel validado','Futuro'),
+        e('Integrar com outras ferramentas necessárias','Flávio/TI','Integração Nibo','Futuro')
+       ]},
+      {id:novoId(),codigo:'P01',nome:'Dashboard da folha',setor:'Pessoal / DP',prioridade:'Média/Alta',responsavel:'Flávio',onda:3,
+       objetivo:'Dashboard do DP com afastamentos, média salarial, funcionários ativos, demitidos, quantidade por sexo e outros indicadores relevantes.',
+       conclusao:{},
+       etapas:[
+        e('Definir estrutura do dashboard','Flávio'),
+        e('Definir indicadores','Flávio/DP','','A iniciar','','Afastamentos, média salarial, ativos, demitidos, por sexo'),
+        e('Desenvolver dashboard','Flávio','Indicadores definidos'),
+        e('Testar dados','DP','Dashboard desenvolvido','Futuro'),
+        e('Implantar','DP','Dados validados','Futuro')
+       ]},
+      {id:novoId(),codigo:'T01',nome:'Gerenciamento da rotina automática do Domínio',setor:'TI / Automação',prioridade:'Média/Alta',responsavel:'Flávio',onda:3,
+       objetivo:'Depende de Felipe cadastrar antes a rotina automática. Só então Flávio desenvolve o gerenciamento dela.',
+       conclusao:{},
+       etapas:[
+        e('Separar empresa teste','Felipe','—'),
+        e('Cadastrar a rotina automática no Domínio','Felipe','Empresa teste'),
+        e('Desenvolver o gerenciamento da rotina','Flávio','Rotina cadastrada'),
+        e('Testar o gerenciamento','Flávio/Fiscal','Gerenciamento pronto','Futuro'),
+        e('Colocar em produção','TI','Testes aprovados','Futuro')
+       ]},
+      {id:novoId(),codigo:'C01',nome:'Mapeamento de oportunidades no Contábil',setor:'Contábil',prioridade:'A definir',responsavel:'Equipe Contábil',onda:4,
+       objetivo:'Não definido na reunião de 09/09. Após o treinamento de Claude, levantar o que pode virar agente, skill ou RPA.',
+       conclusao:{},
+       etapas:[
+        e('Levantar processos repetitivos','Equipe Contábil','Curso Claude','Futuro'),
+        e('Levantar conferências','Equipe Contábil','Curso Claude','Futuro'),
+        e('Levantar conciliações','Equipe Contábil','Curso Claude','Futuro'),
+        e('Levantar análises','Equipe Contábil','Curso Claude','Futuro'),
+        e('Levantar geração de relatórios','Equipe Contábil','Curso Claude','Futuro'),
+        e('Definir prioridade e responsáveis do setor','Gestão','Levantamentos','Futuro')
+       ]},
+      {id:novoId(),codigo:'A01',nome:'Mapeamento de oportunidades no Administrativo',setor:'Administrativo',prioridade:'A definir',responsavel:'Equipe Administrativa',onda:4,
+       objetivo:'Não definido na reunião de 09/09. Após o treinamento, avaliar rotinas administrativas, controles, cobranças, organização de documentos e comunicação.',
+       conclusao:{},
+       etapas:[
+        e('Levantar rotinas administrativas','Equipe Administrativa','Curso Claude','Futuro'),
+        e('Levantar controles internos','Equipe Administrativa','Curso Claude','Futuro'),
+        e('Levantar rotina de cobranças','Equipe Administrativa','Curso Claude','Futuro'),
+        e('Levantar organização de documentos','Equipe Administrativa','Curso Claude','Futuro'),
+        e('Levantar fluxos de comunicação','Equipe Administrativa','Curso Claude','Futuro'),
+        e('Definir prioridade e responsáveis do setor','Gestão','Levantamentos','Futuro')
+       ]}
+    ]
+  };
+}
+
+/* ---------- estado e persistência ---------- */
+let dados = null;
+let vista = 'projetos';
+let abertos = {};
+let memoria = null;
+
+function novoId(){ return 'i' + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-3); }
+
+function ler(){
+  try{ const s = localStorage.getItem(CHAVE); if(s) return JSON.parse(s); }catch(err){}
+  return memoria;
+}
+function gravar(){
+  dados.atualizado = new Date().toISOString();
+  memoria = dados;
+  try{ localStorage.setItem(CHAVE, JSON.stringify(dados)); }catch(err){}
+  if(CONFIG.apiUrl) enviarServidor();
+}
+let pendente = null;
+function enviarServidor(){
+  clearTimeout(pendente);
+  pendente = setTimeout(()=>{
+    fetch(CONFIG.apiUrl,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(dados)})
+      .catch(()=>mostrarAviso('Não foi possível sincronizar com o servidor. Os dados continuam salvos neste navegador.'));
+  },800);
+}
+async function carregar(){
+  if(CONFIG.apiUrl){
+    try{
+      const r = await fetch(CONFIG.apiUrl,{cache:'no-store'});
+      if(r.ok){ const j = await r.json(); if(j && j.projetos){ dados = j; memoria = j; return; } }
+    }catch(err){ mostrarAviso('Servidor indisponível. Usando a cópia deste navegador.'); }
+  }
+  dados = ler() || dadosIniciais();
+}
+
+/* ---------- utilidades ---------- */
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hoje = () => new Date().toISOString().slice(0,10);
+function dataBr(d){ if(!d) return ''; const [a,m,x]=d.split('-'); return `${x}/${m}/${a}`; }
+function projetoDe(id){ return dados.projetos.find(p=>p.id===id); }
+function progresso(p){
+  const t = p.etapas.length, c = p.etapas.filter(x=>x.status==='Concluído').length;
+  return {t,c,pc: t? Math.round(c*100/t):0};
+}
+function mostrarAviso(txt){
+  const a = document.getElementById('aviso');
+  a.textContent = txt; a.hidden = false;
+  clearTimeout(a._t); a._t = setTimeout(()=>a.hidden=true,3800);
+}
+function responsaveis(){
+  const s = new Set();
+  dados.projetos.forEach(p=>{
+    (p.responsavel||'').split(/[\/+,]/).forEach(x=>{ x=x.trim(); if(x) s.add(x); });
+    p.etapas.forEach(e=>(e.responsavel||'').split(/[\/+,]/).forEach(x=>{ x=x.trim(); if(x) s.add(x); }));
+  });
+  return [...s].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+}
+
+/* ---------- filtros ---------- */
+const filtros = {setor:'',responsavel:'',status:'',onda:'',busca:''};
+function etapaPassa(p,e){
+  if(filtros.status && e.status!==filtros.status) return false;
+  if(filtros.responsavel && !((e.responsavel||'')+' '+(p.responsavel||'')).toLowerCase().includes(filtros.responsavel.toLowerCase())) return false;
+  if(filtros.busca){
+    const t = (e.atividade+' '+e.responsavel+' '+e.dependencia+' '+e.obs+' '+p.nome+' '+p.codigo).toLowerCase();
+    if(!t.includes(filtros.busca.toLowerCase())) return false;
+  }
+  return true;
+}
+function projetosFiltrados(){
+  return dados.projetos.map(p=>{
+    if(filtros.setor && p.setor!==filtros.setor) return null;
+    if(filtros.onda && String(p.onda)!==filtros.onda) return null;
+    const etapas = p.etapas.filter(e=>etapaPassa(p,e));
+    const casaProjeto = filtros.busca ? (p.nome+' '+p.codigo+' '+(p.objetivo||'')).toLowerCase().includes(filtros.busca.toLowerCase()) : true;
+    const casaResp = filtros.responsavel ? (p.responsavel||'').toLowerCase().includes(filtros.responsavel.toLowerCase()) : true;
+    if(!etapas.length && !(casaProjeto && casaResp && !filtros.status)) return null;
+    return {p, etapas};
+  }).filter(Boolean);
+}
+const temFiltro = () => filtros.setor||filtros.responsavel||filtros.status||filtros.onda||filtros.busca;
+
+/* ---------- indicadores ---------- */
+function renderIndicadores(){
+  const todas = dados.projetos.flatMap(p=>p.etapas);
+  const c = todas.filter(e=>e.status==='Concluído').length;
+  const and = todas.filter(e=>e.status==='Em andamento').length;
+  const bloq = todas.filter(e=>e.status==='Bloqueado').length;
+  const venc = todas.filter(e=>e.prazo && e.prazo<hoje() && e.status!=='Concluído').length;
+  const pc = todas.length? Math.round(c*100/todas.length):0;
+  document.getElementById('indicadores').innerHTML = `
+    <div class="ind"><b>${pc}%</b><small>${c} de ${todas.length} etapas concluídas</small><div class="barra"><i style="width:${pc}%"></i></div></div>
+    <div class="ind"><b>${dados.projetos.length}</b><small>projetos em acompanhamento</small></div>
+    <div class="ind"><b>${and}</b><small>etapas em andamento</small></div>
+    <div class="ind"><b>${bloq}</b><small>etapas bloqueadas</small></div>
+    <div class="ind"><b>${venc}</b><small>prazos vencidos</small></div>`;
+}
+
+/* ---------- vista: projetos ---------- */
+function htmlEtapas(p, etapas){
+  if(!etapas.length) return `<div style="padding:14px;color:var(--suave)">Nenhuma etapa neste filtro.</div>`;
+  const linhas = etapas.map(e=>{
+    const i = p.etapas.indexOf(e)+1;
+    const venc = e.prazo && e.prazo<hoje() && e.status!=='Concluído';
+    return `<tr>
+      <td class="ordem">${i}</td>
+      <td class="atividade">${esc(e.atividade)}${e.obs?`<div class="obs">${esc(e.obs)}</div>`:''}</td>
+      <td>${esc(e.responsavel)||'<span style="color:var(--suave)">—</span>'}</td>
+      <td class="obs">${esc(e.dependencia)||'—'}</td>
+      <td class="${venc?'prazo-vencido':''}">${e.prazo?dataBr(e.prazo):'<span style="color:var(--suave)">—</span>'}</td>
+      <td><select class="sel-status ${CLASSE_STATUS[e.status]}" data-p="${p.id}" data-e="${e.id}" aria-label="Status da etapa">
+        ${STATUS.map(s=>`<option ${s===e.status?'selected':''}>${s}</option>`).join('')}
+      </select></td>
+      <td class="acoes-linha">
+        <button class="mini" data-acao="editar-etapa" data-p="${p.id}" data-e="${e.id}">Editar</button>
+        <button class="mini mini-perigo" data-acao="excluir-etapa" data-p="${p.id}" data-e="${e.id}" title="Excluir etapa">×</button>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<table>
+    <thead><tr><th></th><th>Atividade</th><th>Responsável</th><th>Dependência</th><th>Prazo</th><th>Status</th><th></th></tr></thead>
+    <tbody>${linhas}</tbody></table>`;
+}
+function htmlProjeto(p, etapas){
+  const g = progresso(p);
+  const aberto = abertos[p.id] ?? !!temFiltro();
+  const trilha = TRILHA.map(t=>{
+    const on = !!(p.conclusao||{})[t];
+    return `<label class="chk ${on?'ok':''}"><input type="checkbox" data-acao="trilha" data-p="${p.id}" data-t="${esc(t)}" ${on?'checked':''}>${t}</label>`;
+  }).join('');
+  return `<article class="projeto" open-state="${aberto?1:0}">
+    <button class="projeto-cab" data-acao="alternar" data-p="${p.id}" aria-expanded="${aberto}">
+      <span class="seta">▶</span>
+      <span class="codigo">${esc(p.codigo)}</span>
+      <span class="projeto-titulo">
+        <h3>${esc(p.nome)}</h3>
+        <span class="projeto-meta">${esc(p.responsavel)||'sem responsável'} · Onda ${esc(p.onda||'—')} · <span class="pill p-${CLASSE_PRIO[p.prioridade]||'definir'}">${esc(p.prioridade)}</span></span>
+      </span>
+      <span class="progresso"><span class="n">${g.c}/${g.t} etapas · ${g.pc}%</span><span class="barra"><i style="width:${g.pc}%"></i></span></span>
+    </button>
+    ${aberto?`<div class="corpo">${htmlEtapas(p,etapas)}
+      <div class="rodape-projeto">
+        <div class="objetivo">${esc(p.objetivo)||'Sem objetivo descrito.'}
+          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="mini" data-acao="nova-etapa" data-p="${p.id}">+ Etapa</button>
+            <button class="mini" data-acao="editar-projeto" data-p="${p.id}">Editar projeto</button>
+            <button class="mini mini-perigo" data-acao="excluir-projeto" data-p="${p.id}">Excluir projeto</button>
+          </div>
+        </div>
+        <div class="checklist"><p>Trilha de conclusão</p><div>${trilha}</div></div>
+      </div>`:''}
+  </article>`;
+}
+function renderProjetos(){
+  const lista = projetosFiltrados();
+  if(!lista.length) return vazio();
+  const porSetor = {};
+  lista.forEach(x=>{ (porSetor[x.p.setor] = porSetor[x.p.setor] || []).push(x); });
+  const ordem = [...SETORES, ...Object.keys(porSetor).filter(s=>!SETORES.includes(s))];
+  return ordem.filter(s=>porSetor[s]).map(s=>{
+    const itens = porSetor[s];
+    const et = itens.flatMap(i=>i.p.etapas);
+    const c = et.filter(e=>e.status==='Concluído').length;
+    return `<section class="setor">
+      <div class="setor-cab"><h2>${esc(s)}</h2><em>${itens.length} projeto${itens.length>1?'s':''} · ${c}/${et.length} etapas concluídas</em></div>
+      ${itens.map(i=>htmlProjeto(i.p,i.etapas)).join('')}
+    </section>`;
+  }).join('');
+}
+
+/* ---------- vista: quadro ---------- */
+function renderQuadro(){
+  const lista = projetosFiltrados();
+  if(!lista.length) return vazio();
+  const cols = STATUS.map(s=>{
+    const cartoes = lista.flatMap(({p,etapas})=>etapas.filter(e=>e.status===s).map(e=>({p,e})));
+    return `<div class="coluna" data-status="${s}">
+      <h3>${s}<span>${cartoes.length}</span></h3>
+      <ul>${cartoes.map(({p,e})=>`
+        <li class="cartao cl-${CLASSE_PRIO[p.prioridade]||'definir'}" draggable="true" data-p="${p.id}" data-e="${e.id}">
+          <b>${esc(p.codigo)} · ${esc(p.setor)}</b>
+          <p>${esc(e.atividade)}</p>
+          <small>${esc(e.responsavel)||'sem responsável'}${e.prazo?' · '+dataBr(e.prazo):''}</small>
+        </li>`).join('') || '<li style="color:var(--suave);font-size:12.5px;padding:6px">Arraste etapas para cá.</li>'}
+      </ul></div>`;
+  }).join('');
+  return `<div class="quadro">${cols}</div>`;
+}
+
+/* ---------- vista: pessoas ---------- */
+function renderPessoas(){
+  const lista = projetosFiltrados();
+  const mapa = {};
+  lista.forEach(({p,etapas})=>etapas.forEach(e=>{
+    const nomes = (e.responsavel||p.responsavel||'A definir').split(/[\/+,]/).map(x=>x.trim()).filter(Boolean);
+    (nomes.length?nomes:['A definir']).forEach(n=>{ (mapa[n]=mapa[n]||[]).push({p,e}); });
+  }));
+  const nomes = Object.keys(mapa).sort((a,b)=>mapa[b].length-mapa[a].length);
+  if(!nomes.length) return vazio();
+  return nomes.map(n=>{
+    const itens = mapa[n];
+    const abertas = itens.filter(i=>i.e.status!=='Concluído').length;
+    return `<section class="pessoa">
+      <div class="pessoa-cab"><h3>${esc(n)}</h3><span class="n">${abertas} em aberto · ${itens.length} no total</span></div>
+      <table><thead><tr><th>Projeto</th><th>Atividade</th><th>Prazo</th><th>Status</th></tr></thead><tbody>
+      ${itens.map(({p,e})=>{
+        const venc = e.prazo && e.prazo<hoje() && e.status!=='Concluído';
+        return `<tr><td class="obs">${esc(p.codigo)} — ${esc(p.nome)}</td>
+        <td class="atividade">${esc(e.atividade)}</td>
+        <td class="${venc?'prazo-vencido':''}">${e.prazo?dataBr(e.prazo):'—'}</td>
+        <td><select class="sel-status ${CLASSE_STATUS[e.status]}" data-p="${p.id}" data-e="${e.id}" aria-label="Status">
+          ${STATUS.map(s=>`<option ${s===e.status?'selected':''}>${s}</option>`).join('')}</select></td></tr>`;
+      }).join('')}
+      </tbody></table></section>`;
+  }).join('');
+}
+
+function vazio(){
+  return `<div class="vazio"><strong>Nada corresponde a esses filtros</strong>
+    Ajuste os filtros acima ou crie um projeto novo para começar.</div>`;
+}
+
+/* ---------- render geral ---------- */
+function render(){
+  renderIndicadores();
+  const alvo = document.getElementById('conteudo');
+  alvo.innerHTML = vista==='projetos'? renderProjetos() : vista==='quadro'? renderQuadro() : renderPessoas();
+  if(vista==='quadro') ligarArrastar();
+  const d = new Date(dados.atualizado);
+  document.getElementById('rodapeInfo').textContent =
+    `Última atualização: ${d.toLocaleString('pt-BR')} · Base: reunião de 09/09/2026 · ` +
+    (CONFIG.apiUrl? 'sincronizado com o servidor' : 'salvo neste navegador — use Exportar para compartilhar com a equipe');
+  atualizarFiltrosOpcoes();
+}
+function atualizarFiltrosOpcoes(){
+  const preencher = (el, itens, valor, rotuloTodos) => {
+    el.innerHTML = `<option value="">${rotuloTodos}</option>` + itens.map(i=>`<option ${String(i)===String(valor)?'selected':''}>${esc(i)}</option>`).join('');
+  };
+  const setores = [...new Set(dados.projetos.map(p=>p.setor))].sort();
+  const ondas = [...new Set(dados.projetos.map(p=>p.onda).filter(Boolean))].sort();
+  preencher(document.getElementById('fSetor'), setores, filtros.setor, 'Todos');
+  preencher(document.getElementById('fResponsavel'), responsaveis(), filtros.responsavel, 'Todos');
+  preencher(document.getElementById('fStatus'), STATUS, filtros.status, 'Todos');
+  preencher(document.getElementById('fOnda'), ondas, filtros.onda, 'Todas');
+}
+
+/* ---------- arrastar no quadro ---------- */
+function ligarArrastar(){
+  let atual = null;
+  document.querySelectorAll('.cartao[draggable]').forEach(c=>{
+    c.addEventListener('dragstart',()=>{ atual = {p:c.dataset.p,e:c.dataset.e}; c.style.opacity=.4; });
+    c.addEventListener('dragend',()=>{ c.style.opacity=1; });
+  });
+  document.querySelectorAll('.coluna').forEach(col=>{
+    col.addEventListener('dragover',ev=>{ ev.preventDefault(); col.classList.add('sobre'); });
+    col.addEventListener('dragleave',()=>col.classList.remove('sobre'));
+    col.addEventListener('drop',ev=>{
+      ev.preventDefault(); col.classList.remove('sobre');
+      if(!atual) return;
+      mudarStatus(atual.p, atual.e, col.dataset.status);
+      atual = null;
+    });
+  });
+}
+function mudarStatus(pid,eid,status){
+  const p = projetoDe(pid); if(!p) return;
+  const e = p.etapas.find(x=>x.id===eid); if(!e) return;
+  e.status = status; gravar(); render();
+}
+
+/* ---------- diálogo ---------- */
+const dlg = document.getElementById('dlg');
+let aoSalvar = null;
+function abrirDialogo(titulo, campos, callback){
+  document.getElementById('dlgTitulo').textContent = titulo;
+  document.getElementById('dlgCorpo').innerHTML = campos;
+  aoSalvar = callback;
+  dlg.showModal();
+  const primeiro = dlg.querySelector('input,select,textarea');
+  if(primeiro) setTimeout(()=>primeiro.focus(),40);
+}
+document.getElementById('frm').addEventListener('submit', ev=>{
+  if(ev.submitter && ev.submitter.value==='salvar' && aoSalvar){
+    const v = {};
+    dlg.querySelectorAll('[name]').forEach(el=> v[el.name] = el.value.trim());
+    if(aoSalvar(v)===false){ ev.preventDefault(); return; }
+    gravar(); render();
+  }
+  aoSalvar = null;
+});
+const campoTexto = (nome,rotulo,valor='',ph='') => `<label>${rotulo}<input name="${nome}" value="${esc(valor)}" placeholder="${esc(ph)}"></label>`;
+const campoArea = (nome,rotulo,valor='') => `<label>${rotulo}<textarea name="${nome}">${esc(valor)}</textarea></label>`;
+const campoSelect = (nome,rotulo,itens,valor) => `<label>${rotulo}<select name="${nome}">${itens.map(i=>`<option ${String(i)===String(valor)?'selected':''}>${esc(i)}</option>`).join('')}</select></label>`;
+const campoData = (nome,rotulo,valor='') => `<label>${rotulo}<input type="date" name="${nome}" value="${esc(valor)}"></label>`;
+
+function dialogoProjeto(p){
+  const novo = !p;
+  p = p || {codigo:'',nome:'',setor:SETORES[0],prioridade:'Alta',responsavel:'',onda:1,objetivo:''};
+  abrirDialogo(novo?'Novo projeto':'Editar projeto', `
+    <div class="dupla">${campoTexto('codigo','Código',p.codigo,'ex.: F04')}${campoSelect('setor','Setor',SETORES,p.setor)}</div>
+    ${campoTexto('nome','Nome do projeto',p.nome,'ex.: RPA de conciliação bancária')}
+    <div class="dupla">${campoSelect('prioridade','Prioridade',PRIORIDADES,p.prioridade)}${campoSelect('onda','Onda de implantação',[1,2,3,4],p.onda)}</div>
+    ${campoTexto('responsavel','Responsável',p.responsavel,'ex.: Cristiano / Flávio')}
+    ${campoArea('objetivo','Objetivo',p.objetivo)}
+  `, v=>{
+    if(!v.nome){ mostrarAviso('Dê um nome ao projeto para salvar.'); return false; }
+    if(novo){
+      dados.projetos.push({id:novoId(),codigo:v.codigo||'—',nome:v.nome,setor:v.setor,prioridade:v.prioridade,
+        responsavel:v.responsavel,onda:Number(v.onda),objetivo:v.objetivo,conclusao:{},etapas:[]});
+    }else{
+      Object.assign(p,{codigo:v.codigo,nome:v.nome,setor:v.setor,prioridade:v.prioridade,responsavel:v.responsavel,onda:Number(v.onda),objetivo:v.objetivo});
+    }
+  });
+}
+function dialogoEtapa(p,e){
+  const novo = !e;
+  e = e || {atividade:'',responsavel:'',dependencia:'',prazo:'',status:'A iniciar',obs:''};
+  abrirDialogo(novo?`Nova etapa em ${p.codigo}`:'Editar etapa', `
+    ${campoTexto('atividade','Atividade',e.atividade,'ex.: Validar planilhão da empresa piloto')}
+    <div class="dupla">${campoTexto('responsavel','Responsável',e.responsavel)}${campoData('prazo','Prazo',e.prazo)}</div>
+    <div class="dupla">${campoTexto('dependencia','Depende de',e.dependencia)}${campoSelect('status','Status',STATUS,e.status)}</div>
+    ${campoArea('obs','Observação',e.obs)}
+  `, v=>{
+    if(!v.atividade){ mostrarAviso('Descreva a atividade para salvar a etapa.'); return false; }
+    if(novo) p.etapas.push({id:novoId(),...v});
+    else Object.assign(e,v);
+  });
+}
+
+/* ---------- eventos ---------- */
+document.getElementById('conteudo').addEventListener('click', ev=>{
+  const alvo = ev.target.closest('[data-acao]');
+  if(!alvo) return;
+  const p = projetoDe(alvo.dataset.p);
+  const acao = alvo.dataset.acao;
+  if(acao==='alternar'){ abertos[p.id] = !(abertos[p.id] ?? !!temFiltro()); render(); }
+  else if(acao==='nova-etapa'){ dialogoEtapa(p,null); }
+  else if(acao==='editar-etapa'){ dialogoEtapa(p, p.etapas.find(x=>x.id===alvo.dataset.e)); }
+  else if(acao==='excluir-etapa'){
+    const e = p.etapas.find(x=>x.id===alvo.dataset.e);
+    if(confirm(`Excluir a etapa "${e.atividade}"?`)){ p.etapas = p.etapas.filter(x=>x.id!==e.id); gravar(); render(); }
+  }
+  else if(acao==='editar-projeto'){ dialogoProjeto(p); }
+  else if(acao==='excluir-projeto'){
+    if(confirm(`Excluir o projeto ${p.codigo} — ${p.nome} e todas as suas etapas?`)){
+      dados.projetos = dados.projetos.filter(x=>x.id!==p.id); gravar(); render();
+    }
+  }
+});
+document.getElementById('conteudo').addEventListener('change', ev=>{
+  if(ev.target.matches('.sel-status')){
+    mudarStatus(ev.target.dataset.p, ev.target.dataset.e, ev.target.value);
+  }
+  if(ev.target.matches('[data-acao="trilha"]')){
+    const p = projetoDe(ev.target.dataset.p);
+    p.conclusao = p.conclusao || {};
+    p.conclusao[ev.target.dataset.t] = ev.target.checked;
+    gravar(); render();
+  }
+});
+document.querySelectorAll('.abas button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    vista = b.dataset.vista;
+    document.querySelectorAll('.abas button').forEach(x=>x.setAttribute('aria-selected', x===b));
+    render();
+  });
+});
+const ligarFiltro = (id,chave)=>{
+  const el = document.getElementById(id);
+  el.addEventListener('input',()=>{ filtros[chave]=el.value; abertos={}; render(); });
+};
+ligarFiltro('fSetor','setor'); ligarFiltro('fResponsavel','responsavel');
+ligarFiltro('fStatus','status'); ligarFiltro('fOnda','onda'); ligarFiltro('fBusca','busca');
+document.getElementById('limparFiltros').addEventListener('click',()=>{
+  Object.keys(filtros).forEach(k=>filtros[k]='');
+  document.getElementById('fBusca').value='';
+  abertos={}; render();
+});
+document.getElementById('novoProjeto').addEventListener('click',()=>dialogoProjeto(null));
+document.getElementById('imprimir').addEventListener('click',()=>{
+  dados.projetos.forEach(p=>abertos[p.id]=true); render(); setTimeout(()=>window.print(),120);
+});
+document.getElementById('exportar').addEventListener('click',()=>{
+  const blob = new Blob([JSON.stringify(dados,null,2)],{type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `painel-contattus-${hoje()}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+  mostrarAviso('Arquivo exportado. Envie para a equipe ou guarde como backup.');
+});
+document.getElementById('importar').addEventListener('click',()=>document.getElementById('arquivo').click());
+document.getElementById('arquivo').addEventListener('change', async ev=>{
+  const f = ev.target.files[0]; if(!f) return;
+  try{
+    const j = JSON.parse(await f.text());
+    if(!j.projetos) throw new Error();
+    dados = j; gravar(); abertos={}; render();
+    mostrarAviso('Dados importados.');
+  }catch(err){ mostrarAviso('Arquivo inválido. Use um JSON exportado por este painel.'); }
+  ev.target.value='';
+});
+document.getElementById('restaurar').addEventListener('click',()=>{
+  if(confirm('Voltar aos dados originais da reunião de 09/09/2026? Tudo que foi alterado depois será perdido.')){
+    dados = dadosIniciais(); gravar(); abertos={}; render();
+  }
+});
+
+/* ---------- início ---------- */
+carregar().then(render);
+</script>
+</body>
+</html>
