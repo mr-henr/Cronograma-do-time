@@ -228,8 +228,24 @@ dialog::backdrop{background:rgba(14,27,42,.55)}
   table{min-width:760px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* -------- conta / permissao -------- */
+.conta{display:flex;align-items:center;gap:7px;color:#DDE5EC;font-size:12.5px;
+  padding:4px 10px;border:1px solid rgba(255,255,255,.2);border-radius:var(--raio);max-width:260px}
+.conta[hidden]{display:none}
+.conta img{width:20px;height:20px;border-radius:50%;flex:0 0 auto}
+.conta b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.conta em{font-style:normal;color:#93A6B8;font-size:11px;white-space:nowrap}
+.conta.editor{border-color:rgba(127,211,174,.5)}
+.conta.editor em{color:#7FD3AE}
+.faixa{background:var(--ambar-claro);border-bottom:1px solid #E6C695;color:#6E4300;font-size:12.5px}
+.faixa[hidden]{display:none}
+.faixa-in{max-width:1400px;margin:0 auto;padding:8px 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.faixa-in strong{font-weight:600}
+.faixa-in button{background:none;border:0;color:#6E4300;text-decoration:underline;
+  cursor:pointer;padding:0;font-weight:500}
+
 @media print{
-  .topo,.filtros,.acoes-linha,.abas,.acoes,.limpar,footer details{display:none!important}
+  .topo,.filtros,.acoes-linha,.abas,.acoes,.limpar,footer details,.faixa{display:none!important}
   body{background:#fff}
   .projeto,.pessoa{break-inside:avoid;border-color:#999}
   .indicadores{background:#fff;color:#000;border-bottom:1px solid #000}
@@ -248,11 +264,17 @@ dialog::backdrop{background:rgba(14,27,42,.55)}
       <button role="tab" data-vista="pessoas" aria-selected="false">Pessoas</button>
     </div>
     <div class="acoes">
-      <button class="btn btn-primario" id="novoProjeto">Novo projeto</button>
+      <button class="btn btn-primario so-editor" id="novoProjeto">Novo projeto</button>
       <button class="btn" id="exportar">Exportar</button>
-      <button class="btn" id="importar">Importar</button>
+      <button class="btn so-editor" id="importar">Importar</button>
       <button class="btn" id="imprimir">Imprimir</button>
-      <button class="btn" id="restaurar" title="Volta aos dados da reunião de 09/09/2026">Restaurar</button>
+      <button class="btn so-editor" id="restaurar" title="Volta aos dados da reunião de 09/09/2026">Restaurar</button>
+      <span class="conta" id="conta" hidden>
+        <img id="contaFoto" alt="" referrerpolicy="no-referrer" hidden>
+        <b id="contaNome"></b><em id="contaPapel"></em>
+      </span>
+      <button class="btn" id="entrar" hidden>Entrar com Google</button>
+      <button class="btn" id="sair" hidden>Sair</button>
     </div>
   </div>
 </header>
@@ -271,6 +293,13 @@ dialog::backdrop{background:rgba(14,27,42,.55)}
     <button class="limpar" id="limparFiltros">Limpar filtros</button>
   </div>
 </section>
+
+<div class="faixa" id="faixa" hidden>
+  <div class="faixa-in">
+    <strong>Somente leitura.</strong><span id="faixaTexto"></span>
+    <button id="faixaEntrar" hidden>Entrar com Google</button>
+  </div>
+</div>
 
 <main id="conteudo"></main>
 
@@ -309,18 +338,31 @@ dialog::backdrop{background:rgba(14,27,42,.55)}
 
 <script>
 /* ==================================================================
-   CONFIG — sincronização opcional entre a equipe
+   NUVEM — banco compartilhado + login com Google (Firebase)
    ------------------------------------------------------------------
-   Sem apiUrl, cada pessoa guarda os dados no próprio navegador
-   (localStorage) e a troca é feita por Exportar / Importar.
+   Passo a passo completo: veja CONFIGURAR.md na raiz do repositório.
 
-   Para todos verem os mesmos dados, publique no servidor um endpoint
-   que responda:
-     GET  {apiUrl}  -> devolve o JSON salvo
-     PUT  {apiUrl}  -> recebe o JSON e grava (corpo = application/json)
-   e preencha a URL abaixo. Ex.: apiUrl: '/api/painel'
+   Resumo: crie um projeto grátis no Firebase, ative o Firestore e o
+   provedor de login "Google", registre um app da web e cole abaixo os
+   quatro valores. Depois libere o domínio do GitHub Pages em
+   Authentication > Settings > Authorized domains.
+
+   Estes valores NÃO são segredo — podem ficar no repositório público.
+   Quem pode alterar o painel é decidido pelas regras do Firestore
+   (arquivo firestore.rules) somadas à lista de e-mails guardada no
+   documento config/permissoes. Sem estar nessa lista, a pessoa entra
+   mas só consegue ler.
+
+   Deixando apiKey em branco, o painel volta a funcionar apenas neste
+   navegador (localStorage + Exportar/Importar), como antes.
 ================================================================== */
-const CONFIG = { apiUrl: '' };
+const FIREBASE = {
+  apiKey: 'AIzaSyAUmajKbC0M9tBg908UghhJk_QOVizYAfg',
+  authDomain: 'cronograma-time-eeddf.firebaseapp.com',
+  projectId: 'cronograma-time-eeddf',
+  appId: '1:442803019685:web:923565fd0573a211fa924c'
+};
+const NUVEM_ATIVA = !!(FIREBASE.apiKey && FIREBASE.projectId);
 
 const STATUS = ['A iniciar','Em andamento','Bloqueado','Concluído','Futuro'];
 const CLASSE_STATUS = {'A iniciar':'s-iniciar','Em andamento':'s-andamento','Bloqueado':'s-bloqueado','Concluído':'s-concluido','Futuro':'s-futuro'};
@@ -450,24 +492,81 @@ function gravar(){
   dados.atualizado = new Date().toISOString();
   memoria = dados;
   try{ localStorage.setItem(CHAVE, JSON.stringify(dados)); }catch(err){}
-  if(CONFIG.apiUrl) enviarServidor();
+  enviarNuvem();
 }
-let pendente = null;
-function enviarServidor(){
-  clearTimeout(pendente);
-  pendente = setTimeout(()=>{
-    fetch(CONFIG.apiUrl,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(dados)})
-      .catch(()=>mostrarAviso('Não foi possível sincronizar com o servidor. Os dados continuam salvos neste navegador.'));
-  },800);
-}
-async function carregar(){
-  if(CONFIG.apiUrl){
-    try{
-      const r = await fetch(CONFIG.apiUrl,{cache:'no-store'});
-      if(r.ok){ const j = await r.json(); if(j && j.projetos){ dados = j; memoria = j; return; } }
-    }catch(err){ mostrarAviso('Servidor indisponível. Usando a cópia deste navegador.'); }
-  }
+function carregar(){
   dados = ler() || dadosIniciais();
+}
+
+/* ---------- nuvem (Firestore) ----------
+   O módulo no fim do arquivo cuida do Firebase e conversa com estas
+   funções. Sem nuvem configurada, nada aqui roda. */
+const nuvem = { conectado:false, usuario:null, salvar:null, entrar:null, sair:null };
+let podeEditar = !NUVEM_ATIVA;      /* sem nuvem: painel local, sempre editável */
+let envioPendente = null;
+let ultimoEnviado = '';
+
+function enviarNuvem(){
+  if(!NUVEM_ATIVA || !nuvem.salvar || !podeEditar) return;
+  clearTimeout(envioPendente);
+  envioPendente = setTimeout(async ()=>{
+    const texto = JSON.stringify(dados);
+    ultimoEnviado = texto;
+    try{ await nuvem.salvar(texto, dados.atualizado); }
+    catch(err){
+      ultimoEnviado = '';
+      mostrarAviso('Não consegui salvar na nuvem (' + (err.code||err.message||'erro') + '). A alteração ficou só neste navegador.');
+    }
+  },700);
+}
+
+/* recebe do servidor a versão que outra pessoa gravou */
+function receberNuvem(texto){
+  if(!texto || texto === ultimoEnviado) return;
+  if(dados && JSON.stringify(dados) === texto) return;
+  let j; try{ j = JSON.parse(texto); }catch(err){ return; }
+  if(!j || !Array.isArray(j.projetos)) return;
+  dados = j; memoria = j;
+  try{ localStorage.setItem(CHAVE, texto); }catch(err){}
+  render();
+}
+
+/* ---------- sessão e permissão ---------- */
+function definirSessao(usuario, editor, aviso){
+  nuvem.usuario = usuario;
+  podeEditar = NUVEM_ATIVA ? !!editor : true;
+  atualizarConta(aviso);
+  render();
+}
+function atualizarConta(aviso){
+  const conta  = document.getElementById('conta');
+  const entrar = document.getElementById('entrar');
+  const sair   = document.getElementById('sair');
+  const faixa  = document.getElementById('faixa');
+
+  document.querySelectorAll('.so-editor').forEach(el=>{ el.hidden = !podeEditar; });
+
+  if(!NUVEM_ATIVA){
+    conta.hidden = entrar.hidden = sair.hidden = faixa.hidden = true;
+    return;
+  }
+  const u = nuvem.usuario;
+  entrar.hidden = !!u;
+  sair.hidden   = !u;
+  conta.hidden  = !u;
+  if(u){
+    const foto = document.getElementById('contaFoto');
+    if(u.foto){ foto.src = u.foto; foto.hidden = false; } else { foto.hidden = true; }
+    document.getElementById('contaNome').textContent = u.nome || u.email;
+    document.getElementById('contaPapel').textContent = podeEditar ? 'pode editar' : 'só leitura';
+    conta.classList.toggle('editor', podeEditar);
+  }
+  faixa.hidden = podeEditar;
+  if(podeEditar) return;
+  document.getElementById('faixaEntrar').hidden = !!u;
+  document.getElementById('faixaTexto').textContent = aviso || (u
+    ? 'A conta ' + u.email + ' não está na lista de quem pode alterar o painel. Você continua vendo tudo, em tempo real.'
+    : 'Entre com uma conta autorizada para alterar prazos, status e projetos.');
 }
 
 /* ---------- utilidades ---------- */
@@ -545,13 +644,13 @@ function htmlEtapas(p, etapas){
       <td>${esc(e.responsavel)||'<span style="color:var(--suave)">—</span>'}</td>
       <td class="obs">${esc(e.dependencia)||'—'}</td>
       <td class="${venc?'prazo-vencido':''}">${e.prazo?dataBr(e.prazo):'<span style="color:var(--suave)">—</span>'}</td>
-      <td><select class="sel-status ${CLASSE_STATUS[e.status]}" data-p="${p.id}" data-e="${e.id}" aria-label="Status da etapa">
+      <td><select class="sel-status ${CLASSE_STATUS[e.status]}" data-p="${p.id}" data-e="${e.id}" aria-label="Status da etapa" ${podeEditar?'':'disabled'}>
         ${STATUS.map(s=>`<option ${s===e.status?'selected':''}>${s}</option>`).join('')}
       </select></td>
-      <td class="acoes-linha">
+      <td class="acoes-linha">${podeEditar?`
         <button class="mini" data-acao="editar-etapa" data-p="${p.id}" data-e="${e.id}">Editar</button>
         <button class="mini mini-perigo" data-acao="excluir-etapa" data-p="${p.id}" data-e="${e.id}" title="Excluir etapa">×</button>
-      </td>
+      `:''}</td>
     </tr>`;
   }).join('');
   return `<table>
@@ -563,7 +662,7 @@ function htmlProjeto(p, etapas){
   const aberto = abertos[p.id] ?? !!temFiltro();
   const trilha = TRILHA.map(t=>{
     const on = !!(p.conclusao||{})[t];
-    return `<label class="chk ${on?'ok':''}"><input type="checkbox" data-acao="trilha" data-p="${p.id}" data-t="${esc(t)}" ${on?'checked':''}>${t}</label>`;
+    return `<label class="chk ${on?'ok':''}"><input type="checkbox" data-acao="trilha" data-p="${p.id}" data-t="${esc(t)}" ${on?'checked':''} ${podeEditar?'':'disabled'}>${t}</label>`;
   }).join('');
   return `<article class="projeto" open-state="${aberto?1:0}">
     <button class="projeto-cab" data-acao="alternar" data-p="${p.id}" aria-expanded="${aberto}">
@@ -578,11 +677,11 @@ function htmlProjeto(p, etapas){
     ${aberto?`<div class="corpo">${htmlEtapas(p,etapas)}
       <div class="rodape-projeto">
         <div class="objetivo">${esc(p.objetivo)||'Sem objetivo descrito.'}
-          <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+          ${podeEditar?`<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
             <button class="mini" data-acao="nova-etapa" data-p="${p.id}">+ Etapa</button>
             <button class="mini" data-acao="editar-projeto" data-p="${p.id}">Editar projeto</button>
             <button class="mini mini-perigo" data-acao="excluir-projeto" data-p="${p.id}">Excluir projeto</button>
-          </div>
+          </div>`:''}
         </div>
         <div class="checklist"><p>Trilha de conclusão</p><div>${trilha}</div></div>
       </div>`:''}
@@ -614,11 +713,11 @@ function renderQuadro(){
     return `<div class="coluna" data-status="${s}">
       <h3>${s}<span>${cartoes.length}</span></h3>
       <ul>${cartoes.map(({p,e})=>`
-        <li class="cartao cl-${CLASSE_PRIO[p.prioridade]||'definir'}" draggable="true" data-p="${p.id}" data-e="${e.id}">
+        <li class="cartao cl-${CLASSE_PRIO[p.prioridade]||'definir'}" draggable="${podeEditar}" data-p="${p.id}" data-e="${e.id}">
           <b>${esc(p.codigo)} · ${esc(p.setor)}</b>
           <p>${esc(e.atividade)}</p>
           <small>${esc(e.responsavel)||'sem responsável'}${e.prazo?' · '+dataBr(e.prazo):''}</small>
-        </li>`).join('') || '<li style="color:var(--suave);font-size:12.5px;padding:6px">Arraste etapas para cá.</li>'}
+        </li>`).join('') || `<li style="color:var(--suave);font-size:12.5px;padding:6px">${podeEditar?'Arraste etapas para cá.':'Nenhuma etapa aqui.'}</li>`}
       </ul></div>`;
   }).join('');
   return `<div class="quadro">${cols}</div>`;
@@ -645,7 +744,7 @@ function renderPessoas(){
         return `<tr><td class="obs">${esc(p.codigo)} — ${esc(p.nome)}</td>
         <td class="atividade">${esc(e.atividade)}</td>
         <td class="${venc?'prazo-vencido':''}">${e.prazo?dataBr(e.prazo):'—'}</td>
-        <td><select class="sel-status ${CLASSE_STATUS[e.status]}" data-p="${p.id}" data-e="${e.id}" aria-label="Status">
+        <td><select class="sel-status ${CLASSE_STATUS[e.status]}" data-p="${p.id}" data-e="${e.id}" aria-label="Status" ${podeEditar?'':'disabled'}>
           ${STATUS.map(s=>`<option ${s===e.status?'selected':''}>${s}</option>`).join('')}</select></td></tr>`;
       }).join('')}
       </tbody></table></section>`;
@@ -662,11 +761,13 @@ function render(){
   renderIndicadores();
   const alvo = document.getElementById('conteudo');
   alvo.innerHTML = vista==='projetos'? renderProjetos() : vista==='quadro'? renderQuadro() : renderPessoas();
-  if(vista==='quadro') ligarArrastar();
+  if(vista==='quadro' && podeEditar) ligarArrastar();
   const d = new Date(dados.atualizado);
   document.getElementById('rodapeInfo').textContent =
     `Última atualização: ${d.toLocaleString('pt-BR')} · Base: reunião de 09/09/2026 · ` +
-    (CONFIG.apiUrl? 'sincronizado com o servidor' : 'salvo neste navegador — use Exportar para compartilhar com a equipe');
+    (!NUVEM_ATIVA ? 'salvo neste navegador — use Exportar para compartilhar com a equipe'
+     : nuvem.conectado ? 'sincronizado com a nuvem — a equipe vê as mudanças na hora'
+     : 'conectando à nuvem…');
   atualizarFiltrosOpcoes();
 }
 function atualizarFiltrosOpcoes(){
@@ -700,6 +801,7 @@ function ligarArrastar(){
   });
 }
 function mudarStatus(pid,eid,status){
+  if(!podeEditar) return;
   const p = projetoDe(pid); if(!p) return;
   const e = p.etapas.find(x=>x.id===eid); if(!e) return;
   e.status = status; gravar(); render();
@@ -770,6 +872,9 @@ document.getElementById('conteudo').addEventListener('click', ev=>{
   if(!alvo) return;
   const p = projetoDe(alvo.dataset.p);
   const acao = alvo.dataset.acao;
+  if(acao!=='alternar' && !podeEditar){
+    mostrarAviso('Entre com uma conta autorizada para alterar o painel.'); return;
+  }
   if(acao==='alternar'){ abertos[p.id] = !(abertos[p.id] ?? !!temFiltro()); render(); }
   else if(acao==='nova-etapa'){ dialogoEtapa(p,null); }
   else if(acao==='editar-etapa'){ dialogoEtapa(p, p.etapas.find(x=>x.id===alvo.dataset.e)); }
@@ -785,6 +890,7 @@ document.getElementById('conteudo').addEventListener('click', ev=>{
   }
 });
 document.getElementById('conteudo').addEventListener('change', ev=>{
+  if(!podeEditar){ render(); return; }
   if(ev.target.matches('.sel-status')){
     mudarStatus(ev.target.dataset.p, ev.target.dataset.e, ev.target.value);
   }
@@ -842,8 +948,103 @@ document.getElementById('restaurar').addEventListener('click',()=>{
   }
 });
 
+/* ---------- ponte com o módulo do Firebase ---------- */
+window.PAINEL = {
+  FIREBASE, NUVEM_ATIVA, receberNuvem, definirSessao, mostrarAviso,
+  registrar(api){ nuvem.salvar = api.salvar; nuvem.entrar = api.entrar; nuvem.sair = api.sair; },
+  conectado(v){ nuvem.conectado = v; render(); },
+  get dadosAtuais(){ return JSON.stringify(dados); },
+  get podeEditar(){ return podeEditar; }
+};
+const pedirLogin = ()=>{ if(nuvem.entrar) nuvem.entrar(); };
+document.getElementById('entrar').addEventListener('click', pedirLogin);
+document.getElementById('faixaEntrar').addEventListener('click', pedirLogin);
+document.getElementById('sair').addEventListener('click',()=>{ if(nuvem.sair) nuvem.sair(); });
+
 /* ---------- início ---------- */
-carregar().then(render);
+carregar();
+atualizarConta();
+render();
+</script>
+
+<script type="module">
+/* ==================================================================
+   Firebase: banco compartilhado (Firestore) + login com Google.
+   Só roda se FIREBASE.apiKey estiver preenchido lá em cima.
+================================================================== */
+const P = window.PAINEL;
+if(P && P.NUVEM_ATIVA){
+  const SDK = 'https://www.gstatic.com/firebasejs/10.14.1';
+  try{
+    const { initializeApp } = await import(`${SDK}/firebase-app.js`);
+    const { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+      = await import(`${SDK}/firebase-auth.js`);
+    const { getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp }
+      = await import(`${SDK}/firebase-firestore.js`);
+
+    const app  = initializeApp(P.FIREBASE);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+    const refEstado = doc(db, 'painel', 'estado');
+    const refPermissoes = doc(db, 'config', 'permissoes');
+
+    const email = () => (auth.currentUser && auth.currentUser.email) || '';
+    const gravar = (texto, atualizado) => setDoc(refEstado, {
+      json: texto,
+      atualizado: atualizado || new Date().toISOString(),
+      gravadoEm: serverTimestamp(),
+      porEmail: email()
+    });
+
+    let existe = null;   /* o documento já foi criado alguma vez? */
+    const semear = () => { existe = true; gravar(P.dadosAtuais).catch(()=>{ existe = false; }); };
+
+    P.registrar({
+      salvar: (texto, atualizado) => gravar(texto, atualizado),
+      entrar: async () => {
+        const provedor = new GoogleAuthProvider();
+        provedor.setCustomParameters({ prompt: 'select_account' });
+        try{ await signInWithPopup(auth, provedor); }
+        catch(err){
+          if(err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
+          P.mostrarAviso('Não foi possível entrar: ' + (err.code || err.message));
+        }
+      },
+      sair: () => signOut(auth)
+    });
+
+    /* dados em tempo real: quem estiver com a página aberta recebe as mudanças */
+    onSnapshot(refEstado, snap=>{
+      P.conectado(true);
+      existe = snap.exists();
+      const d = snap.data();
+      if(d && d.json) P.receberNuvem(d.json);
+      else if(!existe && P.podeEditar) semear();
+    }, err=>{
+      P.conectado(false);
+      P.mostrarAviso('Não consegui ler os dados da nuvem (' + (err.code || err.message) + ').');
+    });
+
+    /* login + whitelist (a lista fica no Firestore, não no repositório) */
+    onAuthStateChanged(auth, async u=>{
+      if(!u){ P.definirSessao(null, false); return; }
+      const usuario = { nome: u.displayName, email: (u.email||'').toLowerCase(), foto: u.photoURL };
+      let editor = false, aviso = '';
+      try{
+        const snap = await getDoc(refPermissoes);
+        const lista = ((snap.exists() && snap.data().editores) || []).map(x=>String(x).trim().toLowerCase());
+        editor = lista.includes(usuario.email);
+      }catch(err){
+        aviso = 'Não consegui ler a lista de autorizados (' + (err.code || err.message) + ').';
+      }
+      P.definirSessao(usuario, editor, aviso);
+      if(editor && existe === false) semear();
+    });
+  }catch(err){
+    console.error('[painel] falha ao carregar o Firebase', err);
+    P.mostrarAviso('Não foi possível carregar o Firebase. O painel está em modo somente leitura.');
+  }
+}
 </script>
 </body>
 </html>
