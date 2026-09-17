@@ -112,7 +112,7 @@ dialog{border:1px solid var(--line2);border-radius:12px;width:min(760px,95vw);pa
   </section>
   <div id="conteudo"></div>
 </main>
-<footer class="footer"><p id="rodapeInfo"></p><details><summary>Como a saúde do cronograma é calculada</summary><p>O sistema mantém o status informado pela equipe, mas calcula uma situação operacional separada. Uma tarefa pode aparecer como atrasada, aguardando dependência ou com prazo próximo sem alterar o status manual salvo. A saúde do projeto considera progresso, atrasos, bloqueios, dependências e cobertura de responsáveis/prazos.</p></details></footer>
+<footer class="footer"><p id="rodapeInfo"></p><details><summary>Como a saúde do cronograma é calculada</summary><p>O sistema mantém o status informado pela equipe, mas calcula uma situação operacional separada. Uma tarefa pode aparecer como atrasada, aguardando dependência ou com prazo próximo sem alterar o status manual salvo. Dependências entre tarefas ainda não iniciadas são tratadas como planejamento normal; só viram atenção imediata quando existe bloqueio real, atraso, execução travada ou ciclo de dependências. A saúde do projeto considera progresso, atrasos, bloqueios, ciclos e cobertura de responsáveis/prazos.</p></details></footer>
 <dialog id="dlg"><form method="dialog" id="frm"><div class="dlg-head"><h3 id="dlgTitulo">Editar</h3></div><div class="dlg-body" id="dlgCorpo"></div><div class="dlg-foot"><button class="light-btn" value="cancelar" type="submit">Cancelar</button><button class="light-btn primary" value="salvar" type="submit">Salvar</button></div></form></dialog>
 <input type="file" id="arquivo" accept="application/json,.json" hidden>
 <div class="toast" id="toast" hidden></div>
@@ -300,10 +300,24 @@ function dependencyTask(p,e){
   const txt=(e.dependencia||'').trim(); if(!txt||txt==='—')return null;
   return p.etapas.find(x=>x.id===txt || x.atividade.toLowerCase()===txt.toLowerCase())||null;
 }
+function dependencyCycle(p,e,seen=new Set()){
+  if(seen.has(e.id)) return true;
+  const dep=dependencyTask(p,e);
+  if(!dep) return false;
+  if(dep.id===e.id) return true;
+  seen.add(e.id);
+  return dependencyCycle(p,dep,seen);
+}
 function taskState(p,e){
   if(e.status==='Concluído')return {key:'done',label:'Concluída',tone:'good'};
   if(e.status==='Bloqueado')return {key:'blocked',label:'Bloqueada',tone:'bad'};
-  const dep=dependencyTask(p,e); if(dep && dep.status!=='Concluído') return {key:'waiting',label:'Aguardando dependência',tone:'warn'};
+  const dep=dependencyTask(p,e);
+  if(dep && dep.status!=='Concluído'){
+    // Dependência de uma tarefa ainda não iniciada é planejamento normal.
+    // Só vira risco operacional quando a tarefa já deveria estar avançando.
+    if(dependencyCycle(p,e)) return {key:'cycle',label:'Dependência circular',tone:'warn'};
+    if(e.status==='Em andamento') return {key:'waiting',label:'Aguardando dependência',tone:'warn'};
+  }
   if(e.prazo && e.prazo<hoje())return {key:'overdue',label:'Atrasada',tone:'bad'};
   if(e.prazo){const d=diffDays(hoje(),e.prazo); if(d<=3)return {key:'soon',label:d<0?'Atrasada':d===0?'Vence hoje':'Vence em '+d+'d',tone:'warn'}}
   if(e.status==='Em andamento')return {key:'active',label:'Em andamento',tone:'warn'};
@@ -312,16 +326,19 @@ function taskState(p,e){
 }
 function projectMetrics(p){
   const es=p.etapas||[], total=es.length, done=es.filter(e=>e.status==='Concluído').length;
-  const overdue=es.filter(e=>taskState(p,e).key==='overdue').length, blocked=es.filter(e=>['blocked','waiting'].includes(taskState(p,e).key)).length;
+  const overdue=es.filter(e=>taskState(p,e).key==='overdue').length;
+  const blocked=es.filter(e=>taskState(p,e).key==='blocked').length;
+  const waiting=es.filter(e=>taskState(p,e).key==='waiting').length;
+  const cycles=es.filter(e=>taskState(p,e).key==='cycle').length;
   const noOwner=es.filter(e=>!(e.responsavel||p.responsavel)).length, noDate=es.filter(e=>!e.prazo).length;
   const due7=es.filter(e=>e.status!=='Concluído'&&e.prazo&&diffDays(hoje(),e.prazo)>=0&&diffDays(hoje(),e.prazo)<=7).length;
   const pc=total?Math.round(done*100/total):0;
-  const health=(overdue||blocked)?'bad':(due7||noOwner||noDate)?'warn':'good';
+  const health=(overdue||blocked||cycles)?'bad':(due7||noOwner||noDate)?'warn':'good';
   const healthLabel=health==='bad'?'Atenção':health==='warn'?'Monitorar':'Saudável';
   const hours=es.reduce((a,e)=>a+(Number.isFinite(e.estimateHours)?e.estimateHours:0),0);
   const actual=es.reduce((a,e)=>a+(Number.isFinite(e.actualHours)?e.actualHours:0),0);
   const next=es.filter(e=>e.status!=='Concluído'&&e.prazo).sort((a,b)=>a.prazo.localeCompare(b.prazo))[0]||null;
-  return {total,done,pc,overdue,blocked,noOwner,noDate,due7,health,healthLabel,hours,actual,next};
+  return {total,done,pc,overdue,blocked,waiting,cycles,noOwner,noDate,due7,health,healthLabel,hours,actual,next};
 }
 function filteredTasks(){
   return allTasks().filter(({p,e})=>{
@@ -349,8 +366,16 @@ function responsaveis(){
   const s=new Set();dados.projetos.forEach(p=>{[p.responsavel,...p.etapas.map(e=>e.responsavel)].join('/').split(/[\/+,]/).forEach(x=>{x=x.trim();if(x)s.add(x)})});return [...s].sort((a,b)=>a.localeCompare(b,'pt-BR'));
 }
 function alertas(){
-  const out={atrasadas:[],bloqueios:[],semPlanejamento:[],proximas:[]};
-  allTasks().forEach(({p,e})=>{const st=taskState(p,e);const label=p.codigo+' · '+e.atividade;const base={p,e,label};if(st.key==='overdue')out.atrasadas.push(base);if(['blocked','waiting'].includes(st.key))out.bloqueios.push(base);if(!e.prazo||!(e.responsavel||p.responsavel))out.semPlanejamento.push(base);if(e.status!=='Concluído'&&e.prazo){const d=diffDays(hoje(),e.prazo);if(d>=0&&d<=7)out.proximas.push(base)}});
+  const out={atrasadas:[],bloqueios:[],dependencias:[],ciclos:[],semPlanejamento:[],proximas:[]};
+  allTasks().forEach(({p,e})=>{
+    const st=taskState(p,e), label=p.codigo+' · '+e.atividade, base={p,e,label};
+    if(st.key==='overdue')out.atrasadas.push(base);
+    if(st.key==='blocked')out.bloqueios.push(base);
+    if(st.key==='waiting')out.dependencias.push(base);
+    if(st.key==='cycle')out.ciclos.push(base);
+    if(!e.prazo||!(e.responsavel||p.responsavel))out.semPlanejamento.push(base);
+    if(e.status!=='Concluído'&&e.prazo){const d=diffDays(hoje(),e.prazo);if(d>=0&&d<=7)out.proximas.push(base)}
+  });
   return out;
 }
 function sortByDate(arr){return arr.sort((a,b)=>(a.e.prazo||'9999').localeCompare(b.e.prazo||'9999'))}
@@ -362,13 +387,13 @@ function limparFiltros(){Object.keys(filtros).forEach(k=>filtros[k]='');document
 
 /* ---------- componentes ---------- */
 function kpis(){
-  const all=allTasks(), done=all.filter(x=>x.e.status==='Concluído').length, active=all.filter(x=>x.e.status==='Em andamento').length, overdue=alertas().atrasadas.length, blocked=alertas().bloqueios.length, projects=dados.projetos.length, pc=all.length?Math.round(done*100/all.length):0;
+  const all=allTasks(), done=all.filter(x=>x.e.status==='Concluído').length, active=all.filter(x=>x.e.status==='Em andamento').length, overdue=alertas().atrasadas.length, blocked=alertas().bloqueios.length, cycles=alertas().ciclos.length, projects=dados.projetos.length, pc=all.length?Math.round(done*100/all.length):0;
   return `<div class="kpis">
     <div class="kpi"><div class="label">Progresso global</div><div class="value">${pc}%</div><div class="hint">${done} de ${all.length} tarefas concluídas</div><div class="meter"><i style="width:${pc}%"></i></div></div>
     <div class="kpi"><div class="label">Projetos</div><div class="value">${projects}</div><div class="hint">${dados.projetos.filter(p=>projectMetrics(p).health==='good').length} saudáveis · ${dados.projetos.filter(p=>projectMetrics(p).health==='bad').length} em atenção</div></div>
     <div class="kpi"><div class="label">Em andamento</div><div class="value">${active}</div><div class="hint">trabalho ativo hoje</div></div>
     <div class="kpi"><div class="label">Atrasadas</div><div class="value" style="color:${overdue?'var(--red)':'inherit'}">${overdue}</div><div class="hint">tarefas fora do prazo</div></div>
-    <div class="kpi"><div class="label">Bloqueios</div><div class="value" style="color:${blocked?'var(--amber)':'inherit'}">${blocked}</div><div class="hint">bloqueadas ou aguardando outra tarefa</div></div>
+    <div class="kpi"><div class="label">Bloqueios</div><div class="value" style="color:${blocked?'var(--amber)':'inherit'}">${blocked}</div><div class="hint">bloqueios operacionais reais</div></div>
     <div class="kpi"><div class="label">Próximos 7 dias</div><div class="value">${all.filter(x=>x.e.status!=='Concluído'&&x.e.prazo&&diffDays(hoje(),x.e.prazo)>=0&&diffDays(hoje(),x.e.prazo)<=7).length}</div><div class="hint">entregas a vencer</div></div>
   </div>`;
 }
@@ -382,8 +407,8 @@ function renderDashboard(){
   const owners=Object.entries(ownerMap).sort((a,b)=>b[1].open-a[1].open).slice(0,6);
   const projects=[...dados.projetos].sort((a,b)=>{const ma=projectMetrics(a),mb=projectMetrics(b);return (mb.overdue+mb.blocked)-(ma.overdue+ma.blocked)});
   return `${kpis()}<div class="dashboard-grid">
-    <section class="card span-2"><div class="card-head"><h2>Saúde dos projetos</h2><small>calculada automaticamente</small></div><div class="card-body"><table class="health-table"><thead><tr><th>Projeto</th><th>Saúde</th><th>Progresso</th><th>Risco</th><th>Próximo prazo</th></tr></thead><tbody>${projects.map(p=>{const m=projectMetrics(p);return `<tr><td><span class="code">${esc(p.codigo)}</span> <b style="font-size:12px">${esc(p.nome)}</b></td><td>${healthBadge(m)}</td><td><div class="progress-row"><span style="font-size:10px">${m.pc}%</span><div class="mini-meter"><i style="width:${m.pc}%"></i></div></div></td><td style="font-size:11px">${m.overdue?`<span style="color:var(--red);font-weight:700">${m.overdue} atrasada(s)</span>`:m.blocked?`<span style="color:var(--amber);font-weight:700">${m.blocked} bloqueio(s)</span>`:'Sem alerta'}</td><td style="font-size:11px;color:var(--muted)">${m.next?dataBr(m.next.prazo):'—'}</td></tr>`}).join('')}</tbody></table></div></section>
-    <section class="card"><div class="card-head"><h2>Atenção imediata</h2><small>${als.atrasadas.length+als.bloqueios.length} itens</small></div><div class="card-body"><div class="alert-list">${als.atrasadas.slice(0,4).map(x=>taskLink(x.p,x.e)).join('')||als.bloqueios.slice(0,4).map(x=>taskLink(x.p,x.e)).join('')||'<div class="empty"><strong>Nenhum alerta crítico</strong>O cronograma não possui atrasos ou bloqueios ativos.</div>'}</div></div></section>
+    <section class="card span-2"><div class="card-head"><h2>Saúde dos projetos</h2><small>calculada automaticamente</small></div><div class="card-body"><table class="health-table"><thead><tr><th>Projeto</th><th>Saúde</th><th>Progresso</th><th>Risco</th><th>Próximo prazo</th></tr></thead><tbody>${projects.map(p=>{const m=projectMetrics(p);return `<tr><td><span class="code">${esc(p.codigo)}</span> <b style="font-size:12px">${esc(p.nome)}</b></td><td>${healthBadge(m)}</td><td><div class="progress-row"><span style="font-size:10px">${m.pc}%</span><div class="mini-meter"><i style="width:${m.pc}%"></i></div></div></td><td style="font-size:11px">${m.overdue?`<span style="color:var(--red);font-weight:700">${m.overdue} atrasada(s)</span>`:m.blocked?`<span style="color:var(--amber);font-weight:700">${m.blocked} bloqueio(s)</span>`:m.cycles?`<span style="color:var(--amber);font-weight:700">${m.cycles} ciclo(s)</span>`:'Sem alerta'}</td><td style="font-size:11px;color:var(--muted)">${m.next?dataBr(m.next.prazo):'—'}</td></tr>`}).join('')}</tbody></table></div></section>
+    <section class="card"><div class="card-head"><h2>Atenção imediata</h2><small>${als.atrasadas.length+als.bloqueios.length+als.ciclos.length} itens</small></div><div class="card-body"><div class="alert-list">${als.atrasadas.slice(0,4).map(x=>taskLink(x.p,x.e)).join('')||als.bloqueios.slice(0,4).map(x=>taskLink(x.p,x.e)).join('')||als.ciclos.slice(0,4).map(x=>taskLink(x.p,x.e)).join('')||'<div class="empty"><strong>Nenhum alerta crítico</strong>O cronograma não possui atrasos, bloqueios ou dependências circulares.</div>'}</div></div></section>
     <section class="card"><div class="card-head"><h2>Próximos 7 dias</h2><small>datas do cronograma</small></div><div class="card-body"><div class="next-list">${upcoming.map(x=>`<div class="next"><span class="date">${dataBr(x.e.prazo)}</span><div><b style="font-size:11.5px">${esc(x.e.atividade)}</b><small>${esc(x.p.codigo)} · ${esc(x.e.responsavel||x.p.responsavel||'A definir')}</small></div><span class="state">${taskState(x.p,x.e).label}</span></div>`).join('')||'<div class="empty">Nenhuma entrega planejada para os próximos 7 dias.</div>'}</div></div></section>
     <section class="card"><div class="card-head"><h2>Carga por responsável</h2><small>estimativas informadas</small></div><div class="card-body"><div class="owner-list">${owners.map(([n,x])=>{const ratio=Math.min(100,x.open*12);return `<div class="owner"><div><b>${esc(n)}</b><small>${x.open} abertas · ${x.overdue} atrasadas${x.hours?' · '+x.hours+'h estimadas':''}</small><div class="healthbar"><i style="width:${ratio}%"></i></div></div><div class="count">${x.total}</div></div>`}).join('')}</div></div></section>
     <section class="card span-2"><div class="card-head"><h2>Qualidade do planejamento</h2><small>o que ainda precisa de informação</small></div><div class="card-body"><div class="next-list">${[
@@ -420,7 +445,7 @@ function renderPeople(){
   const map={};filteredTasks().forEach(({p,e})=>{const n=e.responsavel||p.responsavel||'A definir';map[n]??={tasks:[],open:0,overdue:0,hours:0};map[n].tasks.push({p,e});if(e.status!=='Concluído')map[n].open++;if(taskState(p,e).key==='overdue')map[n].overdue++;map[n].hours+=Number(e.estimateHours)||0});
   const people=Object.entries(map).sort((a,b)=>b[1].open-a[1].open);return `<div class="people-grid">${people.map(([n,x])=>{const ratio=Math.min(100,x.open*12);return `<article class="person-card"><div class="person-head"><h3>${esc(n)}</h3><span class="badge ${x.overdue?'b-high':'b-green'}">${x.overdue?x.overdue+' atrasada(s)':'sem atraso'}</span></div><div class="capacity"><div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px"><span>Carga relativa</span><span>${x.open} abertas${x.hours?' · '+x.hours+'h':''}</span></div><div class="capacity-bar"><i style="width:${ratio}%"></i></div></div><div class="person-metrics"><div class="pm"><b>${x.tasks.length}</b><span>tarefas</span></div><div class="pm"><b>${x.open}</b><span>abertas</span></div><div class="pm"><b>${x.hours||'—'}</b><span>horas estimadas</span></div></div><div class="person-tasks">${x.tasks.filter(i=>i.e.status!=='Concluído').slice(0,5).map(i=>`<div class="person-task"><span>${esc(i.p.codigo)} · ${esc(i.e.atividade)}</span><span>${i.e.prazo?dataBr(i.e.prazo):'—'}</span></div>`).join('')||'<small style="color:var(--muted)">Nenhuma tarefa aberta.</small>'}</div></article>`}).join('')||`<div class="empty"><strong>Sem responsáveis no recorte</strong></div>`}</div>`;
 }
-function renderAlerts(){const a=alertas();const group=(title,items,kind)=>`<section class="alert-group"><h2>${title}<span style="font-family:DM Sans;color:var(--muted);font-size:11px;margin-left:7px">${items.length}</span></h2><div class="alert-items">${items.map(x=>taskLink(x.p,x.e,`<button class="jump" data-acao="ir-tarefa" data-p="${x.p.id}" data-e="${x.e.id}">Abrir</button>`)).join('')||'<div class="empty"><strong>Nada aqui</strong>O sistema não encontrou itens nesta categoria.</div>'}</div></section>`;return `<div class="alerts-grid">${group('Atrasadas',a.atrasadas,'bad')}${group('Bloqueios e dependências',a.bloqueios,'warn')}${group('Próximos 7 dias',a.proximas,'warn')}${group('Qualidade do planejamento',a.semPlanejamento,'neutral')}</div>`}
+function renderAlerts(){const a=alertas();const group=(title,items,kind)=>`<section class="alert-group"><h2>${title}<span style="font-family:DM Sans;color:var(--muted);font-size:11px;margin-left:7px">${items.length}</span></h2><div class="alert-items">${items.map(x=>taskLink(x.p,x.e,`<button class="jump" data-acao="ir-tarefa" data-p="${x.p.id}" data-e="${x.e.id}">Abrir</button>`)).join('')||'<div class="empty"><strong>Nada aqui</strong>O sistema não encontrou itens nesta categoria.</div>'}</div></section>`;return `<div class="alerts-grid">${group('Atrasadas',a.atrasadas,'bad')}${group('Bloqueios reais',a.bloqueios,'bad')}${group('Dependências em andamento',a.dependencias,'warn')}${group('Próximos 7 dias',a.proximas,'warn')}${group('Qualidade do planejamento',a.semPlanejamento.concat(a.ciclos),'neutral')}</div>`}
 
 function setView(v){vista=v;document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.vista===v));const meta={dashboard:['Gestão executiva','Visão geral','O sistema transforma o cronograma em sinais de gestão: avanço, risco, atrasos, dependências, carga e próximos movimentos.'],projetos:['Execução','Projetos','Gerencie as tarefas, dependências e datas de cada iniciativa.'],timeline:['Planejamento','Cronograma','Enxergue o encadeamento das tarefas e onde o plano está sem datas.'],quadro:['Execução diária','Quadro','Movimente o trabalho pela situação operacional e elimine gargalos.'],pessoas:['Capacidade','Pessoas','Distribuição de tarefas, atrasos e horas estimadas por responsável.'],alertas:['Controle','Alertas','Tudo o que exige ação antes de o cronograma se deteriorar.']}[v];document.getElementById('viewEyebrow').textContent=meta[0];document.getElementById('viewTitle').textContent=meta[1];document.getElementById('viewSubtitle').textContent=meta[2];}
 function render(){atualizarConta();atualizarFiltros();setView(vista);document.getElementById('conteudo').innerHTML=vista==='dashboard'?renderDashboard():vista==='projetos'?renderProjects():vista==='timeline'?renderTimeline():vista==='quadro'?renderKanban():vista==='pessoas'?renderPeople():renderAlerts();const d=new Date(dados.atualizado);document.getElementById('rodapeInfo').textContent=`Última atualização: ${d.toLocaleString('pt-BR')} · ${NUVEM_ATIVA?(nuvem.conectado?'sincronizado com Firebase em tempo real':'conectando à nuvem…'):'salvo neste navegador'} · ${allTasks().length} tarefas / ${dados.projetos.length} projetos`; if(vista==='quadro'&&podeEditar)ligarArrastar()}
